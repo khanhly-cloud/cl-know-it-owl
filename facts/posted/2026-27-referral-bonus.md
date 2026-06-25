@@ -1,6 +1,6 @@
 ---
 id: 2026-27-referral-bonus
-status: approved
+status: posted
 category: culture
 tier: core
 cooldown_weeks: 8
@@ -15,8 +15,8 @@ safety:
   roster_checked: true
   flags: []
 approved_by: Khanh Ly
-posted_date: ""
-post_history: []
+posted_date: 2026-06-24
+post_history: [{"date": "2026-06-24", "channel": "home", "ts": "1782290861.331459", "hash": "8087b72dab"}]
 ---
 
 🦉 *Did you know* you can earn a *referral bonus* for helping CODE LEAP hire?
