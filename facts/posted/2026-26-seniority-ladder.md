@@ -1,6 +1,6 @@
 ---
 id: 2026-26-seniority-ladder
-status: approved
+status: posted
 category: culture
 tier: core
 cooldown_weeks: 10
@@ -15,8 +15,8 @@ safety:
   roster_checked: true
   flags: []
 approved_by: ""
-posted_date: ""
-post_history: []
+posted_date: 2026-07-01
+post_history: [{"date": "2026-07-01", "channel": "home", "ts": "1782879867.422529", "hash": "00c43095e9"}]
 ---
 
 🦉 *Did you know* CODE LEAP has a clear *seniority ladder*?
