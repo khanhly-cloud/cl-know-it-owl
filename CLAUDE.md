@@ -44,17 +44,23 @@ and prints JSON (`--json`) or a human summary. It never posts. (It is named
 `pick.py`, not `select.py`: a module named `select` shadows the stdlib `select`
 that `post.py` imports transitively, which breaks the import.)
 
-Two skills wrap the whole flow:
+One skill wraps the whole flow:
 
-- **`/owl-post`** (`.claude/skills/owl-post/`): the fast weekly action. Runs
-  `pick.py`, rewords a recirculated core fact in voice, safety-checks it, then
-  routes through `post.py`. Defaults to a REVIEW preview to the test channel;
-  `home` must be explicit.
-- **`/owl-review`** (`.claude/skills/owl-review/`): the autonomous mid-week loop.
-  Posts the candidate to a review channel and acts on a human ✅ / 🗑️ reaction
-  (approve publishes via `post.py`, discard announces the next candidate).
-  Reaction primitives are in `slack/review.py`; setup, scopes, the review
-  channel, and scheduling are in `slack/AUTONOMOUS.md`.
+- **`/owl`** (`.claude/skills/owl/`): the single command, mode-selected by its
+  argument. Runs `pick.py`, rewords a recirculated core fact in voice,
+  safety-checks it, then routes every send through `post.py`. Modes:
+  - default / `review` / `test`: REVIEW preview to the test channel (safe default).
+  - `home`: the real weekly post to `#codeleap-home`. `dry`: dry run. `pick`: show
+    the decision only. A fact path: use that exact fact.
+  - `announce` / `resolve`: the autonomous mid-week reaction review. `announce`
+    posts the candidate to a review channel; `resolve` acts on a human ✅ / 🗑️
+    reaction (approve publishes via `post.py`, discard announces the next candidate).
+  - `loop`: announce then poll the reaction itself every ~1 min, hands-off, until
+    an approve publishes.
+
+  `home` and `loop` must be explicit. Reaction primitives are in
+  `slack/review.py`; setup, scopes, the review channel, and scheduling are in
+  `slack/AUTONOMOUS.md`.
 
 ## Pipeline (read top to bottom)
 

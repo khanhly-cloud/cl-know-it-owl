@@ -14,7 +14,12 @@ fact). Both obey `config/safety.md` and `config/sources.md`. Persona/voice from
 
 ## Operation A — HARVEST (build the fact library)
 
-Goal: turn approved sources into reviewable candidate facts.
+Goal: turn approved sources into reviewable candidate facts. **Harvest is
+proactive and on-demand, not a one-time setup step.** Always be scanning for new
+and intriguing facts so the pipeline never runs dry: refill `facts/candidates/`
+whenever it (and the approved pool) is thin, and run a fresh pass on demand when
+POST has nothing to surface (see the **never go dry** rule in Operation B and the
+`/owl` skill's C0). Do not fall back to only recycling the pre-approved pool.
 
 1. Read `config/sources.md` for the current allowlist. **Never read denylisted
    sources** (HR, performance reviews, client/project pages, departed-staff
@@ -44,6 +49,12 @@ Goal: turn approved sources into reviewable candidate facts.
    - Favor fresh facts, but on the rotation cadence (~1 in 3-4 weeks) pick a
      **core refresher** (a key benefit / policy / how-to) so newcomers keep
      seeing the must-knows. A human may also pick one directly.
+   - **Never go dry.** If that pool is empty, do **not** report "nothing to post".
+     First surface a safe fact from `facts/candidates/`; if none, run Operation A
+     (HARVEST) over Notion + Drive to find new ones, then surface the best. Only a
+     genuinely exhausted scan (nothing new that clears safety) is reported, and
+     said honestly. A freshly harvested candidate reaches home only via a human
+     approval (the review-channel ✅ counts; see `facts/SCHEMA.md`).
 2. Phrase it in Know-It-Owl's voice (`config/persona.md`): a punchy "Did you
    know…?" with a light owl touch. Keep it short and Slack-friendly.
 3. **Review gate (default ON):** post the draft to the review channel / DM the

@@ -21,7 +21,7 @@ reactions are the only path that keeps the no-server guarantee.
 
 ```
   (mid-week, scheduled)            (a day or two later, scheduled or polled)
-  /owl-review announce             /owl-review resolve
+  /owl announce                    /owl resolve
      pick.py  -> choose fact          review.py poll <ts>
      reword (if recirculate)            approve -> post.py --to home  (records + moves)
      safety + roster check              discard -> announce next candidate (loop)
@@ -61,64 +61,32 @@ on a human ✅. Everything before that is a preview in a channel the bot can rea
 
        SLACK_REVIEW_CHANNEL_ID=C0XXXXXXX   # falls back to SLACK_TEST_CHANNEL_ID
 
-4. **Schedule it.** Do NOT use the cloud `/schedule` skill here: a cloud routine
-   cannot reach this local-only repo or the git-ignored `.env` token, and there is
-   no Slack connector. Use **local cron** with the mechanical `slack/autorun.py`
-   (pure Python, no Claude for the common case). Suggested cadence: `announce`
-   mid-week, `resolve` a few times over the next day during hours the machine is on.
-   See **Deployed setup** below for the exact crontab that is installed.
+4. **Run it.** Drive the loop through the `/owl` skill (Claude-driven, so it can
+   reword a recirculated core fact, which a pure-Python runner cannot):
+   - `/owl announce` mid-week, then `/owl resolve` a day or two later, or
+   - `/owl loop` to announce and then auto-poll the reaction every ~1 minute
+     until a human ✅ publishes.
 
-## Deployed setup (local cron on this machine)
+   Note `/owl loop` uses `CronCreate`, which is **session-only**: it polls while a
+   Claude session is alive and auto-expires after 7 days. There is no
+   always-on/laptop-independent scheduler here. The cloud `/schedule` skill does
+   not fit either: a cloud routine cannot reach this local-only repo or the
+   git-ignored `.env` token, and there is no Slack connector. (A previous local
+   `cron` + `autorun.py` path was removed as dead code: its crontab pointed at a
+   stale directory and never ran.)
 
-This is wired up and running as **local cron**, not the cloud `/schedule` skill.
-The cloud option was ruled out: a cloud routine cannot see this local-only repo or
-the git-ignored `.env` token, and there is no Slack connector. Local cron runs on
-the machine where the repo and token already live.
+## Going live: flip the .env channels
 
-**Mechanical, no Claude.** The cron runs `slack/autorun.py`, which reuses
-`pick.py` + `post.py` + `review.py` in pure Python: zero tokens, nothing to keep
-open. A recirculated `core` fact needs a reworded body, which autorun cannot
-generate, so on those weeks `announce` posts a heads-up to run `/owl-post` by hand.
-
-- `slack/autorun.py announce` picks a fact; if FRESH, posts it to the review
-  channel and seeds ✅/🗑️ (writes `slack/.review-state.json`). If the pick needs a
-  reword, it posts a heads-up and stops.
-- `slack/autorun.py resolve` polls the in-flight review and acts: ✅ roster-checks
-  the approver then `post.py --to home` (records + moves); 🗑️ announces the next
-  candidate; pending/conflict are left for the next run.
-- `slack/cron.sh announce|resolve` is the wrapper cron calls: it `cd`s into the
-  repo, runs autorun with `/usr/bin/python3`, and logs to `/tmp/owl-cron.log`.
-
-Installed crontab (local Asia/Saigon time; edit with `crontab -e`):
-
-    30 11  * * 3   ".../slack/cron.sh" announce   # Wed 11:30: announce
-    0 13-17 * * 3  ".../slack/cron.sh" resolve     # Wed 1-5pm hourly: resolve
-    0 9-17  * * 4  ".../slack/cron.sh" resolve      # Thu 9am-5pm hourly: resolve
-
-(The path is the full repo path; resolve is a harmless no-op when nothing is in
-flight, so running it hourly is cheap.)
-
-### macOS gotcha: Full Disk Access (required, or it silently fails)
-The repo lives in `~/Desktop`, which macOS protects (TCC). `cron` cannot read it
-until you grant access: **System Settings -> Privacy & Security -> Full Disk
-Access -> add `/usr/sbin/cron`**. Without this the jobs run but fail to read the
-repo and `.env`. Moving the repo out of `~/Desktop` also avoids it.
-
-### Currently PoC-pointed (flip before going live)
-`.env` sends review previews to the PoC review channel and "home" to the PoC
-output channel (via a `SLACK_HOME_CHANNEL_ID` override), so cron will NOT post to
-real `#codeleap-home`. To go live:
+`.env` may still be PoC-pointed: review previews to the PoC review channel and
+"home" to a PoC output channel (via a `SLACK_HOME_CHANNEL_ID` override), so a run
+would NOT post to real `#codeleap-home`. To go live:
 - Set `SLACK_HOME_CHANNEL_ID` to the real `#codeleap-home` id (or remove it so
   `post.py` falls back to `SLACK_HOME_CHANNEL`).
 - Set `SLACK_TEST_CHANNEL_ID` / `SLACK_REVIEW_CHANNEL_ID` to the real readable
   review channel.
-- Make sure `facts/approved/` actually has facts, or `announce` just logs
-  "nothing to post".
-
-### Operate it
-- Watch: `tail -f /tmp/owl-cron.log`
-- Test now: `slack/cron.sh announce` or `slack/cron.sh resolve`
-- Edit or remove: `crontab -e` (the block is labeled).
+- `announce` no longer stops when `facts/approved/` is empty: it runs **C0**
+  (`/owl` skill) to surface a candidate or harvest fresh facts from Notion +
+  Drive. It only reports when that scan is genuinely exhausted.
 
 ## Gotchas (from CLAUDE.md / memory)
 
@@ -126,13 +94,13 @@ real `#codeleap-home`. To go live:
   already fired cannot be deleted by the bot, and the bot can only delete a message
   whose `ts` it captured. So the home post is sent live by `post.py` on approval,
   never pre-scheduled.
-- **Capture the review `ts`.** `post.py` prints it; `/owl-review` stores it in
+- **Capture the review `ts`.** `post.py` prints it; `/owl` stores it in
   `slack/.review-state.json` so `resolve` and any later delete/replace can use it.
 - **Never bypass `post.py`** for the home post. It is the only thing that stamps
   `posted_date`, appends `post_history`, sets `status: posted`, moves the file, and
   blocks duplicate wording / non-approved facts.
 - **A human must approve.** `review.py poll` excludes the bot's own seeded
-  reaction, and `/owl-review` roster-checks the approver. The cron is the courier,
+  reaction, and `/owl` roster-checks the approver. The poll is the courier,
   not the approver: the safety guarantee still rests on a human ✅.
 
 ## Files
@@ -140,8 +108,7 @@ real `#codeleap-home`. To go live:
 - `slack/pick.py` decides fresh vs recirculate (no network, no writes).
 - `slack/review.py` seeds and polls the ✅/🗑️ reactions.
 - `slack/post.py` is the one sender and bookkeeper (unchanged).
-- `slack/autorun.py` is the mechanical cron runner (announce/resolve, no Claude).
-- `slack/cron.sh` is the cron wrapper (logs to `/tmp/owl-cron.log`).
-- `.claude/skills/owl-post/` is the manual fast-action command.
-- `.claude/skills/owl-review/` is this autonomous loop (Claude-driven; handles rewording).
+- `.claude/skills/owl/` is the one command: `/owl` for the manual fast-action post,
+  `/owl announce`/`resolve` for this autonomous loop (Claude-driven; handles
+  rewording), and `/owl loop` for the hands-off poll.
 - `slack/.review-state.json` (created at runtime) holds the in-flight review.

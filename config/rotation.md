@@ -34,4 +34,9 @@ fresh outfit. Keep it interesting.
    `weeks since posted_date >= cooldown_weeks`.
 2. If a core fact is due and the cadence calls for a refresher, pick it and
    rework it. Otherwise pick the best fresh fact.
-3. Post, stamp `posted_date`, and append the new variant to `post_history`.
+3. **If the pool is empty, never stop at "nothing to post."** Surface a safe fact
+   from `facts/candidates/`; if none, HARVEST fresh facts from Notion + Drive
+   (`SKILL.md` Operation A) and surface the best. Report only a genuinely
+   exhausted scan, and say so specifically. A surfaced `candidate` still needs a
+   human approval before home (the review-channel ✅; see `facts/SCHEMA.md`).
+4. Post, stamp `posted_date`, and append the new variant to `post_history`.

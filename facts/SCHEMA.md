@@ -42,7 +42,16 @@ No extra label, no "Did you know?" wrapper.>
   maintains them when you post. To rotate a core fact, change only its body wording.
 - Any non-empty `people_mentioned` ⇒ `roster_checked: true` required before
   `status: approved`.
-- Never set `status: approved` yourself. Only a human does that, at review time.
+- A fact does **not** have to be pre-approved to be surfaced. To avoid ever
+  running dry, the bot may harvest fresh candidates and surface a `candidate`
+  directly in the review channel for approval (see `SKILL.md` Operation A / the
+  `/owl` skill's C0). It is still safety- and roster-checked before it is shown.
+- **Approval is always a human act, but the review-channel ✅ is one.** Only a
+  human sets `status: approved`. A rostered member's ✅ reaction on the review
+  message counts as that approval: on it, the resolve step sets `status: approved`
+  and records `approved_by` (the reacting member) before `slack/post.py` sends it.
+  Never auto-approve a candidate without a human ✅ (the bot's own seeded reaction
+  does not count).
 - `tier: core` facts (key benefits, policies, how-tos) rotate back periodically.
   They stay in `posted/` after sending and become eligible again only after
   `cooldown_weeks` have passed. `tier: trivia` facts are sent once.

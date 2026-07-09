@@ -9,9 +9,8 @@ what every command does. For the big picture see `README.md`; for the rules see
 | Command | What it does | Network? | Model (Claude)? |
 |---|---|---|---|
 | `slack/pick.py` | Decides **fresh vs recirculate** (the rotation engine). Prints the choice. Posts nothing. | No | No |
-| `/owl-post` | Fast weekly action: pick, reword if needed, safety-check, then post via `post.py`. | Yes (to post) | Yes (reword/safety) |
+| `/owl` | The one command. Modes: default review preview, `home` real post, `dry`, `pick`, `announce`/`resolve` reaction review, `loop` hands-off. Rewords if needed, safety-checks, routes through `post.py`. | Yes (to post) | Yes (reword/safety) |
 | `slack/post.py` | The **one sender**. Posts a fact verbatim and records the post (date, history, move to `posted/`). | Yes | No |
-| `/owl-review` | Autonomous mid-week loop: `announce` posts for review, `resolve` acts on the ✅/🗑️ reaction. | Yes | Yes (reword on recirculate) |
 | `slack/review.py` | Reaction primitives: `seed` adds ✅/🗑️, `poll` reads the verdict. | Yes | No |
 
 > **Network note (this environment):** any command that calls Slack needs network
@@ -75,7 +74,7 @@ and why.
 
 ```bash
 python3 slack/pick.py                 # human-readable decision
-python3 slack/pick.py --json          # machine-readable (used by /owl-post)
+python3 slack/pick.py --json          # machine-readable (used by /owl)
 python3 slack/pick.py --core-every 4  # target weeks between core refreshers (default 3)
 python3 slack/pick.py --today 2026-06-16 --root /tmp/fixture   # for testing
 ```
@@ -87,19 +86,25 @@ It returns one of three decisions:
 - **none**: nothing is eligible (approved is empty and no core fact is due). Run a
   harvest to refill `candidates/`.
 
-### `/owl-post`: the fast weekly action
-The one command for the weekly post. Runs `pick.py`, rewords a recirculated core
-fact in Know-It-Owl's voice, safety-checks it, then routes through `post.py`.
+### `/owl`: the one command
+Runs `pick.py`, rewords a recirculated core fact in Know-It-Owl's voice,
+safety-checks it, then routes through `post.py`. One skill covers the fast weekly
+post, the mid-week reaction review, and the fully hands-off loop.
 
 | You type | It does |
 |---|---|
-| `/owl-post` | **Review preview** to the test channel (default, safe). |
-| `/owl-post home` | The real post to `#codeleap-home` (records + moves the file). |
-| `/owl-post dry` | Dry run: shows the body and what it would record, sends nothing. |
-| `/owl-post pick` | Just shows the decision, posts nothing. |
-| `/owl-post facts/approved/2026-NN-foo.md` | Use that exact fact, skip the picker. |
+| `/owl` | **Review preview** to the test channel (default, safe). |
+| `/owl home` | The real post to `#codeleap-home` (records + moves the file). |
+| `/owl dry` | Dry run: shows the body and what it would record, sends nothing. |
+| `/owl pick` | Just shows the decision, posts nothing. |
+| `/owl facts/approved/2026-NN-foo.md` | Use that exact fact, skip the picker. |
+| `/owl announce` | Post the next candidate to the review channel and seed ✅/🗑️. |
+| `/owl resolve` | Read the reaction once: ✅ publishes via `post.py`, 🗑️ announces the next candidate. |
+| `/owl loop` | Announce, then poll the reaction every ~1 min and auto-resolve. Stops itself on approve+publish. |
 
-Default is always the review preview. `home` must be explicit.
+Default is always the review preview. `home` and `loop` must be explicit. A human
+must react; the loop ignores the bot's own seeded reactions and roster-checks the
+approver.
 
 ### `slack/post.py`: the one sender
 Never post by hand. Everything goes through this so the bookkeeping and guards
@@ -118,18 +123,6 @@ even on a test post), `--dry-run`, `--no-customize`. On a real post it stamps
 to `facts/posted/`. It **refuses** to send a non-approved fact to home, and
 **refuses** to repost identical wording (it hashes the body).
 
-### `/owl-review`: the autonomous mid-week loop
-The no-server version of approve/discard buttons. State lives in
-`slack/.review-state.json`.
-
-| You type | It does |
-|---|---|
-| `/owl-review announce` | Post the next candidate to the review channel and seed ✅/🗑️. |
-| `/owl-review resolve` | Read the reaction and act: ✅ publishes via `post.py`, 🗑️ announces the next candidate. |
-
-A human must react; the loop ignores the bot's own seeded reactions and
-roster-checks the approver.
-
 ### `slack/review.py`: reaction primitives
 The mechanical seed/poll used by the loop. No model needed.
 
@@ -147,32 +140,32 @@ excludes the bot's own reactions, so only a real click counts.
 ## 3. The two ways to run it
 
 ### A. Manual weekly post (simplest)
-1. `/owl-post` to preview this week's pick in the test channel.
-2. Read it. If happy, `/owl-post home` to publish for real.
+1. `/owl` to preview this week's pick in the test channel.
+2. Read it. If happy, `/owl home` to publish for real.
 
 That's it. One person, two commands.
 
 ### B. Hands-off review by emoji (what the PoC tested)
-1. `/owl-review announce` posts the candidate to the review channel and seeds ✅/🗑️.
+1. `/owl announce` posts the candidate to the review channel and seeds ✅/🗑️.
 2. A reviewer clicks **✅** (publish) or **🗑️** (skip) in Slack.
-3. `/owl-review resolve` reads the reaction: ✅ publishes to `#codeleap-home`,
+3. `/owl resolve` reads the reaction: ✅ publishes to `#codeleap-home`,
    🗑️ surfaces the next candidate automatically.
 
 Steps 1 and 3 can be scheduled (e.g. announce Wednesday, resolve Thursday) so the
-only human action is one emoji click.
+only human action is one emoji click. `/owl loop` chains both ends together and
+polls the reaction itself, hands-off, until an approve publishes.
 
-### C. Production scheduling (token-light, no terminal)
-Do **not** poll with the model on a tight timer (that burns tokens and needs the
-session open). Instead split the work:
-- The **poll + publish-on-approve** is pure Python (`review.py poll` + `post.py`),
-  so run it on **OS cron** or a cloud routine: **zero model tokens**, no terminal.
-- The model is only needed to **reword** a recirculated core fact (~1 week in 3 to
-  4). A week posting a fresh, already-written fact needs no model call at all.
+### C. Hands-off polling (`/owl loop`)
+`/owl loop` announces the candidate and then polls the reaction every ~1 minute,
+publishing on a human ✅ with no further prompting.
 
-Hosting options and the exact loop are in `slack/AUTONOMOUS.md`:
-- **Local cron**: works today, but the machine must be on at the scheduled times.
-- **Cloud `/schedule` routine**: laptop-independent; needs the repo + token
-  available to the routine.
+Caveat: this runs via `CronCreate`, which is **session-only**: it polls while a
+Claude session is alive and auto-expires after 7 days. There is no always-on,
+laptop-independent scheduler in this repo. An earlier OS-cron path
+(`autorun.py` + `cron.sh`) was removed as dead code (its crontab pointed at a
+stale directory and never ran); the cloud `/schedule` skill does not fit either,
+since a cloud routine cannot reach this local-only repo or the git-ignored `.env`
+token. See `slack/AUTONOMOUS.md`.
 
 ---
 

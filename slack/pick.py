@@ -5,14 +5,14 @@ pick.py: the rotation "schematic" that decides what Know-It-Owl should post next
 Pure, deterministic, no network, no file writes. It reads the fact library and
 answers ONE question: post a FRESH never-seen fact, or RECIRCULATE an evergreen
 `core` fact that is past its cooldown (which then must be reworded). This is the
-decision engine behind the /owl-post command and the autonomous mid-week review.
+decision engine behind the /owl command and the autonomous mid-week review.
 
 (Named pick.py, not select.py, on purpose: a module called select.py shadows the
 stdlib `select` that urllib/socket import, which breaks post.py's import.)
 
 It does NOT send anything and does NOT touch fact files. Posting still goes only
 through slack/post.py. Rewording a recirculated core fact is done by the caller
-(a human, or Claude via /owl-post) in Know-It-Owl's voice; this script only picks
+(a human, or Claude via /owl) in Know-It-Owl's voice; this script only picks
 and explains why.
 
 Policy (config/rotation.md):
@@ -26,7 +26,7 @@ Policy (config/rotation.md):
 
 Usage:
   python3 slack/pick.py                # human-readable decision
-  python3 slack/pick.py --json         # machine-readable (used by /owl-post)
+  python3 slack/pick.py --json         # machine-readable (used by /owl)
   python3 slack/pick.py --core-every 4 # tune the refresher cadence
   python3 slack/pick.py --today 2026-06-16 --root /tmp/fixture   # for testing
 """
@@ -270,7 +270,7 @@ def print_human(d):
 def main():
     ap = argparse.ArgumentParser(
         description="Decide whether Know-It-Owl posts a fresh fact or recirculates a core one.")
-    ap.add_argument("--json", action="store_true", help="machine-readable output (used by /owl-post)")
+    ap.add_argument("--json", action="store_true", help="machine-readable output (used by /owl)")
     ap.add_argument("--core-every", type=int, default=3,
                     help="target weeks between core refreshers (default 3)")
     ap.add_argument("--today", help="override today's date (YYYY-MM-DD) for testing")
