@@ -30,7 +30,7 @@ client work" rule.
 3. **Post** — once a week, the oldest approved fact is phrased by Know-It-Owl and
    sent to `#codeleap-home` → moved to `facts/posted/`.
 
-## Status (2026-06-10)
+## Status (2026-07-09)
 
 - [x] Sources reachable & machine-readable: Google Drive (Code Coffee decks read
       via connector — **no local download needed**), Notion.
@@ -38,9 +38,15 @@ client work" rule.
       in workspace CODE LEAP (`T01REQX1UEB`). Scopes: `chat:write`,
       `chat:write.customize`, `channels:read`, `channels:history`, `users:read`.
 - [x] Test post delivered to test channel `C0B9C9AP7PV` ✅.
-- [ ] First harvest pass over Code Coffee decks + curated Notion → candidate facts.
-- [ ] First review batch.
-- [ ] First weekly post to `#codeleap-home`.
+- [x] First harvest pass over Code Coffee decks + curated Notion → candidate facts.
+- [x] First review batch.
+- [x] First weekly post to `#codeleap-home`.
+
+**Live & running.** The whole pipeline is exercised end-to-end and the weekly
+cadence is in motion. Facts are posting to `#codeleap-home` via `slack/post.py`
+(7 posts recorded to home, latest 2026-07-01 — the seniority ladder). Currently
+**1 fact approved and queued** (`facts/approved/2026-29-aws-partner.md`) and
+**1 candidate awaiting review** (`facts/candidates/2026-5th-anniversary.md`).
 
 ## Folder map
 
